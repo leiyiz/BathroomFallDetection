@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
             if (window.size() > L) {
                 double temp = window.remove();
                 sortedWindow.remove(temp);
-                reversedSortedWindow.add(-temp);
+                reversedSortedWindow.remove(-temp);
             }
 
             // Calculates average and variance and cut-offs.
@@ -113,6 +113,8 @@ public class MainActivity extends AppCompatActivity {
                     i += 1;
                 }
                 double average = sum / L;
+
+                Log.d("maximum", Double.toString(maximum));
 
                 // variance calculations
                 double variance = 0.0;
