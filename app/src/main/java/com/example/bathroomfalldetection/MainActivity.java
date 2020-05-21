@@ -9,6 +9,7 @@ import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.widget.TextView;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -25,7 +26,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class MainActivity extends AppCompatActivity {
     final Runnable detector = new Runnable() { public void run() { detection(); } };
-    final int BUFFER_SIZE = 4000;
+    final int READ_SIZE = 4000;
     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     ScheduledFuture<?> detectionHandle = null;
     AudioRecord recorder = null;
@@ -34,20 +35,28 @@ public class MainActivity extends AppCompatActivity {
     PriorityQueue<Double> reversedSortedWindow = new PriorityQueue<>();
 
     final int L = 30;
+    final double THRESHOLD = 0.0225;
+    final int SAMPLE_RATE = 44100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 0);
+        int minSize = AudioRecord.getMinBufferSize(
+                SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+        );
+        Log.d("Recording", "buffer size is " + minSize);
         recorder = new AudioRecord.Builder()
                     .setAudioSource(MediaRecorder.AudioSource.MIC)
                     .setAudioFormat(new AudioFormat.Builder()
-                            .setSampleRate(44100)
+                            .setSampleRate(SAMPLE_RATE)
                             .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                             .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
                             .build())
-                    .setBufferSizeInBytes(BUFFER_SIZE)
+                    .setBufferSizeInBytes(4 * minSize)
                     .build();
         scheduleDetection();
     }
@@ -58,10 +67,10 @@ public class MainActivity extends AppCompatActivity {
 
     public void detection() {
 //        int bufferSize = AudioRecord.getMinBufferSize(44100, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
+        recorder.startRecording();
         while (true) {
-            final short[] buffer = new short[BUFFER_SIZE];
+            final short[] buffer = new short[READ_SIZE];
             try {
-                recorder.startRecording();
 
                 // Read until buffer is full
                 int offset = 0;
@@ -72,18 +81,18 @@ public class MainActivity extends AppCompatActivity {
                     length -= read;
                     offset += read;
                 }
-                recorder.stop();
+//                recorder.stop();
             } catch (Exception e) {
                 Log.d("In thread", e.toString());
-                recorder.stop();
+//                recorder.stop();
             }
 
             // Calculates power over recording
             double e = 0;
-            for (int i = 0; i < BUFFER_SIZE; i++) {
+            for (int i = 0; i < READ_SIZE; i++) {
                 e += buffer[i] * buffer[i];
             }
-            e /= BUFFER_SIZE;
+            e /= READ_SIZE;
             Log.d("energy_value", Double.toString(e));
 
             // Add power to current window and update min/max
@@ -109,12 +118,13 @@ public class MainActivity extends AppCompatActivity {
                 double sum = 0;
                 for (Double eWin : window) {
                     normalizedEnergy[i] = (eWin - minimum) / diff;
-                    sum += normalizedEnergy[i];
+                    if (i != window.size() - 1)
+                        sum += normalizedEnergy[i];
                     i += 1;
                 }
                 double average = sum / L;
 
-                Log.d("maximum", Double.toString(maximum));
+//                Log.d("maximum", Double.toString(maximum));
 
                 // variance calculations
                 double variance = 0.0;
@@ -125,8 +135,18 @@ public class MainActivity extends AppCompatActivity {
                 }
                 variance /= (L - 1);
                 Log.d("average_normalized_variance", average + " " + variance);
+//                if (variance < THRESHOLD) {
+////                    changeText("alert");
+//                    Log.d("alert_below_thresh", variance + " is below threshold");
+//                } else {
+////                    changeText("no_alert");
+//                }
             }
         }
+    }
+
+    public void changeText(String text) {
+        ((TextView) findViewById(R.id.displayBox)).setText(text);
     }
 
 
