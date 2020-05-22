@@ -35,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     PriorityQueue<Double> reversedSortedWindow = new PriorityQueue<>();
 
     final int L = 30;
-    final double THRESHOLD = 0.0225;
+    final double THRESHOLD = 0.0000000225;
     final int SAMPLE_RATE = 44100;
 
     @Override
@@ -90,9 +90,11 @@ public class MainActivity extends AppCompatActivity {
             // Calculates power over recording
             double e = 0;
             for (int i = 0; i < READ_SIZE; i++) {
+                buffer[i] += 2000;
                 e += buffer[i] * buffer[i];
             }
             e /= READ_SIZE;
+            e = Math.sqrt(e);
             Log.d("energy_value", Double.toString(e));
 
             // Add power to current window and update min/max
@@ -122,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
                         sum += normalizedEnergy[i];
                     i += 1;
                 }
-                double average = sum / L;
+                double average = sum / (L - 1);
 
 //                Log.d("maximum", Double.toString(maximum));
 
@@ -135,12 +137,12 @@ public class MainActivity extends AppCompatActivity {
                 }
                 variance /= (L - 1);
                 Log.d("average_normalized_variance", average + " " + variance);
-//                if (variance < THRESHOLD) {
-////                    changeText("alert");
-//                    Log.d("alert_below_thresh", variance + " is below threshold");
-//                } else {
-////                    changeText("no_alert");
-//                }
+                if (variance < THRESHOLD) {
+//                    changeText("alert");
+                    Log.d("alert_below_thresh", variance + " is below threshold");
+                } else {
+//                    changeText("no_alert");
+                }
             }
         }
     }
