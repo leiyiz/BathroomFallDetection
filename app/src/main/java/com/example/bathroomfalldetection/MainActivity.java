@@ -14,7 +14,11 @@ import android.widget.TextView;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.Executors;
@@ -33,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     Queue<Double> window = new LinkedList<>();
     PriorityQueue<Double> sortedWindow = new PriorityQueue<>();
     PriorityQueue<Double> reversedSortedWindow = new PriorityQueue<>();
+    List<Double> median_list = new ArrayList<>();
 
     final int L = 30;
     final double THRESHOLD = 0.0000000225;
@@ -90,27 +95,43 @@ public class MainActivity extends AppCompatActivity {
             // Calculates power over recording
             double e = 0;
             for (int i = 0; i < READ_SIZE; i++) {
-                buffer[i] += 2000;
+//                buffer[i] += 2000;
                 e += buffer[i] * buffer[i];
             }
             e /= READ_SIZE;
-            e = Math.sqrt(e);
+//            e = Math.sqrt(e);
             Log.d("energy_value", Double.toString(e));
 
             // Add power to current window and update min/max
             window.add(e);
             sortedWindow.add(e);
             reversedSortedWindow.add(-e);
+            int index = Collections.binarySearch(median_list, e);
+            if (index < 0) {
+                index = -index - 1;
+            }
+            median_list.add(index, e);
 
             // Remove from window if larger than L
             if (window.size() > L) {
                 double temp = window.remove();
                 sortedWindow.remove(temp);
                 reversedSortedWindow.remove(-temp);
+                index = Collections.binarySearch(median_list, temp);
+                if (index < 0) {
+                    Log.d("WTF", "binary search on doubles went really wrong, want " + temp + " got " + median_list.get(index));
+                    index = -index - 1;
+                }
+                median_list.remove(index);
             }
 
             // Calculates average and variance and cut-offs.
             if (window.size() == L) {
+                // Median method
+                // TODO: Use a different L for medians or something so that we can get median detection and find pulses.
+                double median = (median_list.get(median_list.size() / 2) + median_list.get(median_list.size() / 2 + 1)) / 2;
+
+                // Variance method
                 // Calculates normalized energy
                 double minimum = sortedWindow.peek();
                 double maximum = -reversedSortedWindow.peek();
