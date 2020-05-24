@@ -30,20 +30,28 @@ import java.util.concurrent.TimeUnit;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class MainActivity extends AppCompatActivity {
-    final Runnable detector = new Runnable() { public void run() { detection(); } };
+    final Runnable detector = new Runnable() {
+        public void run() {
+            detection();
+        }
+    };
     final int READ_SIZE = 4000;
     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     ScheduledFuture<?> detectionHandle = null;
     AudioRecord recorder = null;
-    Queue<Double> window = new LinkedList<>();
+    LinkedList<Double> window = new LinkedList<>();
     PriorityQueue<Double> sortedWindow = new PriorityQueue<>();
     PriorityQueue<Double> reversedSortedWindow = new PriorityQueue<>();
-//    List<Double> median_list = new ArrayList<>();
+    List<Double> median_list = new ArrayList<>();
 
-    final int L = 30;
-    final double THRESHOLD = 0.0000000225;
+    final int L = 17;
+    final double THRESHOLD = 0.000225;
     final int SAMPLE_RATE = 44100;
-    final double GAUSSIAN_SCALE = 5;
+    final double GAUSSIAN_SCALE = 800;
+
+    final int DELAY = (L - 1) / 2;
+    final double CMF_TH = 1.6e7;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,17 +65,17 @@ public class MainActivity extends AppCompatActivity {
         );
         Log.d("Recording", "buffer size is " + minSize);
         recorder = new AudioRecord.Builder()
-                    .setAudioSource(MediaRecorder.AudioSource.MIC)
-                    .setAudioFormat(new AudioFormat.Builder()
-                            .setSampleRate(SAMPLE_RATE)
-                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                            .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
-                            .build())
-                    .setBufferSizeInBytes(4 * minSize)
-                    .build();
+                .setAudioSource(MediaRecorder.AudioSource.MIC)
+                .setAudioFormat(new AudioFormat.Builder()
+                        .setSampleRate(SAMPLE_RATE)
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+                        .build())
+                .setBufferSizeInBytes(4 * minSize)
+                .build();
         scheduleDetection();
     }
-    
+
     public void scheduleDetection() {
         detectionHandle = scheduler.schedule(detector, -1, MILLISECONDS);
     }
@@ -99,7 +107,8 @@ public class MainActivity extends AppCompatActivity {
             Random r = new Random();
             for (int i = 0; i < READ_SIZE; i++) {
 //                buffer[i] += 2000;
-                double signal = buffer[i] + r.nextGaussian() * GAUSSIAN_SCALE;
+//                double signal = buffer[i] + r.nextGaussian() * GAUSSIAN_SCALE;
+                double signal = buffer[i];
                 e += signal * signal;
             }
             e /= READ_SIZE;
@@ -110,64 +119,80 @@ public class MainActivity extends AppCompatActivity {
             window.add(e);
             sortedWindow.add(e);
             reversedSortedWindow.add(-e);
-//            int index = Collections.binarySearch(median_list, e);
-//            if (index < 0) {
-//                index = -index - 1;
-//            }
-//            median_list.add(index, e);
+            int index = Collections.binarySearch(median_list, e);
+            if (index < 0) {
+                index = -index - 1;
+            }
+            median_list.add(index, e);
 
             // Remove from window if larger than L
             if (window.size() > L) {
                 double temp = window.remove();
                 sortedWindow.remove(temp);
                 reversedSortedWindow.remove(-temp);
-//                index = Collections.binarySearch(median_list, temp);
-//                if (index < 0) {
-//                    Log.d("WTF", "binary search on doubles went really wrong, want " + temp + " got " + median_list.get(index));
-//                    index = -index - 1;
-//                }
-//                median_list.remove(index);
+                index = Collections.binarySearch(median_list, temp);
+                if (index < 0) {
+                    Log.d("WTF", "binary search on doubles went really wrong, want " + temp + " got " + median_list.get(index));
+                    index = -index - 1;
+                }
+                median_list.remove(index);
             }
 
             // Calculates average and variance and cut-offs.
             if (window.size() == L) {
                 // Median method
                 // TODO: Use a different L for medians or something so that we can get median detection and find pulses.
-//                double median = (median_list.get(median_list.size() / 2) + median_list.get(median_list.size() / 2 + 1)) / 2;
+                double median = median_list.size() % 2 == 0
+                        ? (median_list.get(median_list.size() / 2) + median_list.get(median_list.size() / 2 + 1)) / 2
+                        : median_list.get((median_list.size() / 2));
+
+                double energyDelayed = window.get(window.size() - 1 - DELAY);
+                double cmfk = Math.abs(median - energyDelayed) > CMF_TH
+                        ? median
+                        : energyDelayed;
+
+                double pk = energyDelayed - cmfk;
+
+                Log.d("condition_median_filter", "median=" + median + " energyDelayed=" + energyDelayed + " cmfk=" + cmfk + " pk=" + pk);
+
+                if (pk > 0.1) {
+                    Log.d("alert_above_thresh", pk + " is above threshold");
+                }
+
 
                 // Variance method
                 // Calculates normalized energy
-                double minimum = sortedWindow.peek();
-                double maximum = -reversedSortedWindow.peek();
-                double[] normalizedEnergy = new double[L];
-                int i = 0;
-                double diff = maximum - minimum;
-                double sum = 0;
-                for (Double eWin : window) {
-                    normalizedEnergy[i] = (eWin - minimum) / diff;
-                    if (i != window.size() - 1)
-                        sum += normalizedEnergy[i];
-                    i += 1;
-                }
-                double average = sum / (L - 1);
-
-//                Log.d("maximum", Double.toString(maximum));
-
-                // variance calculations
-                double variance = 0.0;
-                double temp;
-                for (i = 0; i < L - 1; i++) {
-                    temp = normalizedEnergy[i] - average;
-                    variance += temp * temp;
-                }
-                variance /= (L - 1);
-                Log.d("average_normalized_variance", average + " " + variance);
-                if (variance < THRESHOLD) {
-//                    changeText("alert");
-                    Log.d("alert_below_thresh", variance + " is below threshold");
-                } else {
-//                    changeText("no_alert");
-                }
+//                double minimum = sortedWindow.peek();
+//                double maximum = -reversedSortedWindow.peek();
+//                double[] normalizedEnergy = new double[L];
+//                int i = 0;
+//                double diff = maximum - minimum;
+//                double sum = 0;
+//                for (Double eWin : window) {
+//                    normalizedEnergy[i] = (eWin - minimum) / diff;
+//                    if (i != window.size() - 1)
+//                        sum += normalizedEnergy[i];
+//                    i += 1;
+//                }
+//                double average = sum / (L - 1);
+//
+////                Log.d("maximum", Double.toString(maximum));
+//
+//                // variance calculations
+//                double variance = 0.0;
+//                double temp;
+//                for (i = 0; i < L - 1; i++) {
+//                    temp = normalizedEnergy[i] - average;
+//                    variance += temp * temp;
+//                }
+//                variance /= (L - 1);
+//                Log.d("average_normalized_variance", average + " " + variance);
+//                if (variance < THRESHOLD) {
+////                    changeText("alert");
+//                    Log.d("alert_below_thresh", variance + " is below threshold");
+//                } else {
+////                    changeText("no_alert");
+//                }
             }
         }
     }
@@ -177,13 +202,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
-
-
- /*
-    Utility methods
-  */
-     private void writeToFile(String data, String filename) {
+    /*
+       Utility methods
+     */
+    private void writeToFile(String data, String filename) {
         String state = Environment.getExternalStorageState();
         if (!Environment.MEDIA_MOUNTED.equals(state)) {
             //If it isn't mounted - we can't write into it.
