@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">BathroomFallDetection</string>
+    <string name="btn_mute_text">Mute</string>
+    <string name="status_text">"Status: "</string>
+    <string name="status_fall_detected">Fall Detected</string>
+    <string name="status_no_fall_detected">No Fall Detected</string>
+    <string name="save_text">Save</string>
+    <string name="contact_autofill_hint">(___)-___-____</string>
 </resources>
