@@ -3,18 +3,24 @@ package com.example.bathroomfalldetection;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
+import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
+import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,19 +36,18 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * App for detecting bathroom falls and contacting people if alert isn't muted.
- *
+ * <p>
  * Workflow:
  * When app is turned on, start fall detection mechanisms.
  * If fall detected -> start sound alert and timer for contacting emergency contact
- *
+ * <p>
  * If fall detected and time runs out to cancel -> Contact emergency contact.
- *  - If response from contact, parse response somehow or something
- *  - If no response from contact after a few minutes, contact emergency services
- *
+ * - If response from contact, parse response somehow or something
+ * - If no response from contact after a few minutes, contact emergency services
+ * <p>
  * If fall detected and muted -> Goes back to fall detection mode
- *
+ * <p>
  * Stops detecting when user quits the app.
- *
  */
 public class MainActivity extends AppCompatActivity {
     final Runnable detector = new Runnable() {
@@ -54,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     ScheduledFuture<?> detectionHandle = null;
     AudioRecord recorder = null;
+    AudioTrack audioTrack = null;
     LinkedList<Double> window = new LinkedList<>();
     PriorityQueue<Double> sortedWindow = new PriorityQueue<>();
     PriorityQueue<Double> reversedSortedWindow = new PriorityQueue<>();
@@ -71,10 +77,17 @@ public class MainActivity extends AppCompatActivity {
     final int L = 17;
     final double THRESHOLD = 0.000225;
     final int SAMPLE_RATE = 44100;
+    final double DURATION = 0.5;
+    final int NUM_SAMPLE = (int) (DURATION * SAMPLE_RATE);
+    final int frequency = 5000; //Hz
     final double GAUSSIAN_SCALE = 800;
 
     final int DELAY = (L - 1) / 2;
     final double CMF_TH = 1.6e7;
+
+    final String CONTACT_FILENAME = "EmContact_number_and_address.txt";
+    String number = null;
+    String address = null;
 
 
     @Override
@@ -82,8 +95,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // TODO: Load contact information from file if available, else ask or something
-        // TODO: Also load address
+        // Load contact information from file if available, TODO: else ask or something
+        // Also load address
+        List<String> readResults = readContactAndAddressFromFile(CONTACT_FILENAME);
+        if (readResults.size() >= 2) {
+            number = readResults.get(0);
+            address = readResults.get(1);
+            ((EditText) findViewById(R.id.contact_number_text)).setText(number);
+            ((EditText) findViewById(R.id.address_text)).setText(address);
+        }
 
         // TODO: Pair with bluetooth device if available.
 
@@ -106,6 +126,31 @@ public class MainActivity extends AppCompatActivity {
                         .build())
                 .setBufferSizeInBytes(4 * minSize)
                 .build();
+
+        //gets audiotrack
+        audioTrack = new AudioTrack.Builder()
+                .setAudioAttributes(
+                        new AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_MEDIA)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                .build()
+                )
+                .setAudioFormat(
+                        new AudioFormat.Builder()
+                                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                .setSampleRate(SAMPLE_RATE)
+                                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                                .build()
+                )
+                .setBufferSizeInBytes(2 * NUM_SAMPLE)
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build();
+        audioTrack.setVolume(1.0f);
+        short[] shortSample = new short[NUM_SAMPLE];
+        genTone(shortSample, frequency);
+        audioTrack.write(shortSample, 0, shortSample.length);
+
+
         scheduleDetection();
     }
 
@@ -233,50 +278,50 @@ public class MainActivity extends AppCompatActivity {
                 // Starts timer to contact emergency contact
                 // Changes text of the fall detection status
                 // Starts contact timers after
-                 if (fallDetected && !(contactRunning | emergencyRunning)) {
-                      ((TextView) findViewById(R.id.fall_detection_status)).setText(R.string.status_fall_detected);
-                      contactRunning = true;
-                      contactTimer = new CountDownTimer(CONTACT_COUNTDOWN, PERIODIC_ALERT) {
-                            @Override
-                            public void onTick(long millisUntilFinished) {
-                                // Play a sound
-                                Log.d("contactTimer", "Time left: " + millisUntilFinished);
-                                // Play a sound
-                                alertSound();
-                                // TODO: Update the contact countdown timer text.
-                            }
+                if (fallDetected && !(contactRunning | emergencyRunning)) {
+                    ((TextView) findViewById(R.id.fall_detection_status)).setText(R.string.status_fall_detected);
+                    contactRunning = true;
+                    contactTimer = new CountDownTimer(CONTACT_COUNTDOWN, PERIODIC_ALERT) {
+                        @Override
+                        public void onTick(long millisUntilFinished) {
+                            // Play a sound
+                            Log.d("contactTimer", "Time left: " + millisUntilFinished);
+                            // Play a sound
+                            alertSound();
+                            // TODO: Update the contact countdown timer text.
+                        }
 
-                            @Override
-                            public void onFinish() {
-                                contactRunning = false;
-                                emergencyRunning = true;
-                                // TODO: Contact emergency contact
-                                contactSavedContact(); // TODO: Maybe provide a message
+                        @Override
+                        public void onFinish() {
+                            contactRunning = false;
+                            emergencyRunning = true;
+                            // TODO: Contact emergency contact
+                            contactSavedContact(); // TODO: Maybe provide a message
 
-                                // Start new timer for waiting for response or something when timer runs out, contact emergency services
-                                // TODO: Update the contact countdown timer text.
-                                // TODO: Update status
-                                emergencyTimer = new CountDownTimer(EMERGENCY_COUNTDOWN, PERIODIC_ALERT) {
-                                    @Override
-                                    public void onTick(long millisUntilFinished) {
-                                        Log.d("emergencyTimer", "Time left: " + millisUntilFinished);
-                                        // Play a sound
-                                        alertSound();
-                                        // TODO: Update the contact countdown timer text.
-                                    }
+                            // Start new timer for waiting for response or something when timer runs out, contact emergency services
+                            // TODO: Update the contact countdown timer text.
+                            // TODO: Update status
+                            emergencyTimer = new CountDownTimer(EMERGENCY_COUNTDOWN, PERIODIC_ALERT) {
+                                @Override
+                                public void onTick(long millisUntilFinished) {
+                                    Log.d("emergencyTimer", "Time left: " + millisUntilFinished);
+                                    // Play a sound
+                                    alertSound();
+                                    // TODO: Update the contact countdown timer text.
+                                }
 
-                                    @Override
-                                    public void onFinish() {
-                                        // TODO: Text police or something with address
-                                        // TODO: Start listener for response?
-                                        // If that doesn't work, maybe have it play an audio file saying that the person fell and may be unconscious
-                                        // TODO: Update status
+                                @Override
+                                public void onFinish() {
+                                    // TODO: Text police or something with address
+                                    // TODO: Start listener for response?
+                                    // If that doesn't work, maybe have it play an audio file saying that the person fell and may be unconscious
+                                    // TODO: Update status
 
-                                    }
-                                }.start();
-                            }
-                        }.start();
-                 }
+                                }
+                            }.start();
+                        }
+                    }.start();
+                }
             }
         }
     }
@@ -305,7 +350,7 @@ public class MainActivity extends AppCompatActivity {
         // Pressing button will change to no fall detected
         // Reset emergency contact timer
 
-        ((TextView)findViewById(R.id.fall_detection_status)).setText(R.string.status_no_fall_detected);
+        ((TextView) findViewById(R.id.fall_detection_status)).setText(R.string.status_no_fall_detected);
         // disable contact timer
         if (contactTimer != null && contactRunning) {
             contactRunning = false;
@@ -322,10 +367,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * TODO: Saves emergency contact and address information
+     * Check if the boxes are both populated and Saves emergency contact and address information
      */
     public void saveContactHandler(View view) {
         // Check that a valid number was entered
+        String tempNumber = ((EditText) findViewById(R.id.contact_number_text)).getText().toString();
+        String tempAddress = ((EditText) findViewById((R.id.address_text))).getText().toString();
+
+        if (tempNumber.length() == 10 && tempAddress.length() > 0) {
+            number = tempNumber;
+            address = tempAddress;
+            String data = number + "\n" + address;
+            writeToFile(data, CONTACT_FILENAME);
+        }
     }
 
     /**
@@ -353,16 +407,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * TODO: Plays a sound that lasts 0.5 seconds during the timer
+     * Plays a sound that lasts 0.5 seconds during the timer
      * Note: Should bypass the user settings to still alert while muted.
      * Maybe also throw in some flashing lights for the sake of accessibility.
      */
     public void alertSound() {
-
+        if (audioTrack != null) audioTrack.play();
     }
 
     /**
-       Utility methods
+     * if filename does exist, then delete that file. Create a file named filename
+     * and write data to that file.
+     *
+     * @param data     data needs to be written
+     * @param filename filename to write data to
      */
     private void writeToFile(String data, String filename) {
         String state = Environment.getExternalStorageState();
@@ -373,6 +431,14 @@ public class MainActivity extends AppCompatActivity {
         //        Log.d("Trying to find where the heck I am", );
         File f = new File(this.getExternalFilesDir(null), filename);
         //        File f = new File(this.getFilesDir().getAbsolutePath(), filename);
+        if (f.exists()) f.delete();
+
+        try {
+            f.createNewFile();
+        } catch (IOException e) {
+            Log.e("Exception", "File create failed: " + e.toString());
+        }
+
         FileOutputStream outputStream = null;
         try {
             outputStream = new FileOutputStream(f, true);
@@ -380,6 +446,49 @@ public class MainActivity extends AppCompatActivity {
             outputStream.close();
         } catch (IOException e) {
             Log.e("Exception", "File write failed: " + e.toString());
+        }
+    }
+
+    /**
+     * read contact number and Address from specified file. expect the file has 2 lines
+     * the first line being the contact phone number and the second line being address.
+     *
+     * @param filename the file this method reads from
+     * @return string list, the 0th element being number and the 1th being
+     * address. if the filename given is not present, the array contains no String.
+     */
+    private List<String> readContactAndAddressFromFile(String filename) {
+        List<String> result = new ArrayList<>();
+        File f = new File(this.getExternalFilesDir(null), filename);
+        if (f.exists()) {
+            try {
+                BufferedReader br = new BufferedReader(new FileReader(f));
+                String line;
+
+                while ((line = br.readLine()) != null) {
+                    result.add(line);
+                }
+                br.close();
+            } catch (IOException e) {
+                Log.e("Exception", "File read failed: " + e.toString());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * generate tone of given frequency and populate the corresponding signal to given
+     * short array
+     *
+     * @param shortSample
+     * @param freq
+     */
+    private void genTone(short[] shortSample, int freq) {
+        double angle = 0.0;
+        double increment = 2 * Math.PI * freq / SAMPLE_RATE; // angular increment
+        for (int i = 0; i < shortSample.length; i++) {
+            shortSample[i] = (short) (Math.sin(angle) * Short.MAX_VALUE);
+            angle += increment;
         }
     }
 }
