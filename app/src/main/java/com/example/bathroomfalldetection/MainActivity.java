@@ -77,9 +77,9 @@ public class MainActivity extends AppCompatActivity {
     final int L = 17;
     final double THRESHOLD = 0.000225;
     final int SAMPLE_RATE = 44100;
-    final double DURATION = 0.5;
+    final double DURATION = 0.8;
     final int NUM_SAMPLE = (int) (DURATION * SAMPLE_RATE);
-    final int frequency = 5000; //Hz
+    final int frequency = 500; //Hz
     final double GAUSSIAN_SCALE = 800;
 
     final int DELAY = (L - 1) / 2;
@@ -149,6 +149,49 @@ public class MainActivity extends AppCompatActivity {
         short[] shortSample = new short[NUM_SAMPLE];
         genTone(shortSample, frequency);
         audioTrack.write(shortSample, 0, shortSample.length);
+
+        contactTimer = new CountDownTimer(CONTACT_COUNTDOWN, PERIODIC_ALERT) {
+                @Override
+                public void onTick(long millisUntilFinished) {
+                    // Play a sound
+                    Log.d("contactTimer", "Time left: " + millisUntilFinished);
+                    // Play a sound
+                    alertSound();
+                    // TODO: Update the contact countdown timer text.
+                    TextView status_t = findViewById(R.id.fall_detection_status);
+                    status_t.setText(R.string.status_fall_detected);
+                }
+
+                @Override
+                public void onFinish() {
+                    contactRunning = false;
+                    emergencyRunning = true;
+                    // TODO: Contact emergency contact
+                    contactSavedContact(); // TODO: Maybe provide a message
+
+                    // Start new timer for waiting for response or something when timer runs out, contact emergency services
+                    // TODO: Update the contact countdown timer text.
+                    // TODO: Update status
+                    emergencyTimer = new CountDownTimer(EMERGENCY_COUNTDOWN, PERIODIC_ALERT) {
+                        @Override
+                        public void onTick(long millisUntilFinished) {
+                            Log.d("emergencyTimer", "Time left: " + millisUntilFinished);
+                            // Play a sound
+                            alertSound();
+                            // TODO: Update the contact countdown timer text.
+                        }
+
+                        @Override
+                        public void onFinish() {
+                            // TODO: Text police or something with address
+                            // TODO: Start listener for response?
+                            // If that doesn't work, maybe have it play an audio file saying that the person fell and may be unconscious
+                            // TODO: Update status
+
+                        }
+                    }.start();
+                }
+            };
 
 
         scheduleDetection();
@@ -273,54 +316,19 @@ public class MainActivity extends AppCompatActivity {
 //                }
 
                 // TODO: Fall detected
+                // TODO: Accelerometer
                 boolean fallDetected = false;
 
                 // Starts timer to contact emergency contact
                 // Changes text of the fall detection status
                 // Starts contact timers after
                 if (fallDetected && !(contactRunning | emergencyRunning)) {
-                    ((TextView) findViewById(R.id.fall_detection_status)).setText(R.string.status_fall_detected);
+                    Log.d("What", "Does it even get in here");
+                    Log.d("Does it set", "set");
                     contactRunning = true;
-                    contactTimer = new CountDownTimer(CONTACT_COUNTDOWN, PERIODIC_ALERT) {
-                        @Override
-                        public void onTick(long millisUntilFinished) {
-                            // Play a sound
-                            Log.d("contactTimer", "Time left: " + millisUntilFinished);
-                            // Play a sound
-                            alertSound();
-                            // TODO: Update the contact countdown timer text.
-                        }
-
-                        @Override
-                        public void onFinish() {
-                            contactRunning = false;
-                            emergencyRunning = true;
-                            // TODO: Contact emergency contact
-                            contactSavedContact(); // TODO: Maybe provide a message
-
-                            // Start new timer for waiting for response or something when timer runs out, contact emergency services
-                            // TODO: Update the contact countdown timer text.
-                            // TODO: Update status
-                            emergencyTimer = new CountDownTimer(EMERGENCY_COUNTDOWN, PERIODIC_ALERT) {
-                                @Override
-                                public void onTick(long millisUntilFinished) {
-                                    Log.d("emergencyTimer", "Time left: " + millisUntilFinished);
-                                    // Play a sound
-                                    alertSound();
-                                    // TODO: Update the contact countdown timer text.
-                                }
-
-                                @Override
-                                public void onFinish() {
-                                    // TODO: Text police or something with address
-                                    // TODO: Start listener for response?
-                                    // If that doesn't work, maybe have it play an audio file saying that the person fell and may be unconscious
-                                    // TODO: Update status
-
-                                }
-                            }.start();
-                        }
-                    }.start();
+                    Log.d("Nani, fam", "nani");
+                    contactTimer.start();
+                    Log.d("What the fuck", "Timer");
                 }
             }
         }
@@ -412,7 +420,12 @@ public class MainActivity extends AppCompatActivity {
      * Maybe also throw in some flashing lights for the sake of accessibility.
      */
     public void alertSound() {
-        if (audioTrack != null) audioTrack.play();
+        audioTrack.stop();
+        if (audioTrack != null) {
+            Log.d("alertSound", "We out here");
+//            audioTrack.reloadStaticData();
+            audioTrack.play();
+        }
     }
 
     /**
