@@ -3,6 +3,11 @@ package com.example.bathroomfalldetection;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -23,6 +28,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -64,6 +70,11 @@ public class MainActivity extends AppCompatActivity {
     PriorityQueue<Double> sortedWindow = new PriorityQueue<>();
     PriorityQueue<Double> reversedSortedWindow = new PriorityQueue<>();
     List<Double> median_list = new ArrayList<>();
+
+    private SensorManager sensorManager;
+    private Sensor accelSensor;
+    private double ACCEL_THRESHOLD = 3.0; // TODO: Choose accelerometer threshold
+    private int fallCount = 0;
 
     CountDownTimer contactTimer;
     private boolean contactRunning;
@@ -109,6 +120,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Gets recording permissions
         requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 0);
+
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+
+        accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
         // Gets recording parameters
         int minSize = AudioRecord.getMinBufferSize(
@@ -333,6 +348,43 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
+    public void onResume() {
+        super.onResume();
+        sensorManager.registerListener(accelListener, accelSensor, SensorManager.SENSOR_DELAY_NORMAL);
+    }
+
+    // TODO: Do something with the accelerometer
+    public SensorEventListener accelListener = new SensorEventListener() {
+        public void onAccuracyChanged(Sensor sensor, int acc) {
+        }
+
+        public void onSensorChanged(SensorEvent event) {
+//            double[] copy = new double[3];
+            double length = 0.0;
+            for (int i = 0; i < 3; i++) {
+//                copy[i] = event.values[i];
+                length += event.values[i] * event.values[i];
+            }
+            length = Math.sqrt(length);
+            Log.d("Accelerometer", Arrays.toString(event.values) + " length: " + length);
+            // TODO: Do something
+            if (length < ACCEL_THRESHOLD) {
+                boolean fallDetected = true;
+                fallCount += 1;
+                Log.d("Accelerometer", "Fall detected!!!!!");
+                // If falling motion is consecutive
+                // TODO: Make it adaptive
+                if (fallCount > 3 && !(contactRunning | emergencyRunning)) {
+                    contactRunning = true;
+                    contactTimer.start();
+                }
+            } else {
+                fallCount = 0;
+            }
+        }
+    };
+
 
     public void changeText(String text) {
         ((TextView) findViewById(R.id.fall_detection_status)).setText(text);
