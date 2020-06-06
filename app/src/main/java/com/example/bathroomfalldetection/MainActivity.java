@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -119,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
         // TODO: Pair with bluetooth device if available.
 
         // Gets recording permissions
-        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 0);
+        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS}, 0);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 
@@ -166,47 +167,47 @@ public class MainActivity extends AppCompatActivity {
         audioTrack.write(shortSample, 0, shortSample.length);
 
         contactTimer = new CountDownTimer(CONTACT_COUNTDOWN, PERIODIC_ALERT) {
-                @Override
-                public void onTick(long millisUntilFinished) {
-                    // Play a sound
-                    Log.d("contactTimer", "Time left: " + millisUntilFinished);
-                    // Play a sound
-                    alertSound();
-                    // TODO: Update the contact countdown timer text.
-                    TextView status_t = findViewById(R.id.fall_detection_status);
-                    status_t.setText(R.string.status_fall_detected);
-                }
+            @Override
+            public void onTick(long millisUntilFinished) {
+                // Play a sound
+                Log.d("contactTimer", "Time left: " + millisUntilFinished);
+                // Play a sound
+                alertSound();
+                // TODO: Update the contact countdown timer text.
+                TextView status_t = findViewById(R.id.fall_detection_status);
+                status_t.setText(R.string.status_fall_detected);
+            }
 
-                @Override
-                public void onFinish() {
-                    contactRunning = false;
-                    emergencyRunning = true;
-                    // TODO: Contact emergency contact
-                    contactSavedContact(); // TODO: Maybe provide a message
+            @Override
+            public void onFinish() {
+                contactRunning = false;
+                emergencyRunning = true;
+                // Contact emergency contact
+                contactSavedContact();
 
-                    // Start new timer for waiting for response or something when timer runs out, contact emergency services
-                    // TODO: Update the contact countdown timer text.
-                    // TODO: Update status
-                    emergencyTimer = new CountDownTimer(EMERGENCY_COUNTDOWN, PERIODIC_ALERT) {
-                        @Override
-                        public void onTick(long millisUntilFinished) {
-                            Log.d("emergencyTimer", "Time left: " + millisUntilFinished);
-                            // Play a sound
-                            alertSound();
-                            // TODO: Update the contact countdown timer text.
-                        }
+                // Start new timer for waiting for response or something when timer runs out, contact emergency services
+                // TODO: Update the contact countdown timer text.
+                // TODO: Update status
+                emergencyTimer = new CountDownTimer(EMERGENCY_COUNTDOWN, PERIODIC_ALERT) {
+                    @Override
+                    public void onTick(long millisUntilFinished) {
+                        Log.d("emergencyTimer", "Time left: " + millisUntilFinished);
+                        // Play a sound
+                        alertSound();
+                        // TODO: Update the contact countdown timer text.
+                    }
 
-                        @Override
-                        public void onFinish() {
-                            // TODO: Text police or something with address
-                            // TODO: Start listener for response?
-                            // If that doesn't work, maybe have it play an audio file saying that the person fell and may be unconscious
-                            // TODO: Update status
+                    @Override
+                    public void onFinish() {
+                        // TODO: Text police or something with address
+                        // TODO: Start listener for response?
+                        // If that doesn't work, maybe have it play an audio file saying that the person fell and may be unconscious
+                        // TODO: Update status
 
-                        }
-                    }.start();
-                }
-            };
+                    }
+                }.start();
+            }
+        };
 
 
         scheduleDetection();
@@ -385,11 +386,6 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-
-    public void changeText(String text) {
-        ((TextView) findViewById(R.id.fall_detection_status)).setText(text);
-    }
-
     /**
      * Cancels the alert
      */
@@ -446,13 +442,23 @@ public class MainActivity extends AppCompatActivity {
      * TODO: Contacts saved contact
      */
     public void contactSavedContact() {
-        // TODO: Has to listen for reply or something. Also send address
+        Log.d("texting", "sending text to saved contact number");
+        if (number == null) {
+            Log.d("texting", "number is null, cannot send message");
+            return;
+        }
+        String message = "Falling detection app detected falling and the alert hasn't been cancelled in 1 min.\n My address is " + address;
+        SmsManager.getDefault().sendTextMessage(number, null, message, null, null);
+
+        // TODO: listen for reply or something.
+        Log.d("texting", "sent text to saved contact number");
     }
 
     /**
      * TODO: Text emergency services
      */
     public void textEmergencyServices() {
+        Log.d("texting", "Sent text to emergency service");
         // TODO: Has to listen for bounce-back or something. Also send address
     }
 
