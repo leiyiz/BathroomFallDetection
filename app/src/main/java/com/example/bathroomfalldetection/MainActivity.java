@@ -3,7 +3,9 @@ package com.example.bathroomfalldetection;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -79,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
 
     CountDownTimer contactTimer;
     private boolean contactRunning;
-    final int CONTACT_COUNTDOWN = 1 * 3 * 1000; // in ms
+    final int CONTACT_COUNTDOWN = 1 * 60 * 1000; // in ms
     final int PERIODIC_ALERT = 1 * 1000; // in ms
 
     CountDownTimer emergencyTimer;
@@ -435,6 +437,22 @@ public class MainActivity extends AppCompatActivity {
             address = tempAddress;
             String data = number + "\n" + address;
             writeToFile(data, CONTACT_FILENAME);
+        } else {
+            AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
+            alertDialog.setMessage("your number is not 10 digits or your address is empty. please retry");
+            alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "OK",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "I guess",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            alertDialog.show();
         }
     }
 
@@ -447,7 +465,8 @@ public class MainActivity extends AppCompatActivity {
             Log.d("texting", "number is null, cannot send message");
             return;
         }
-        String message = "Falling detection app detected falling and the alert hasn't been cancelled in 1 min.\n My address is " + address;
+        String message = "Falling detection app detected falling and the alert hasn't been cancelled in " +
+                + CONTACT_COUNTDOWN + " seconds.\n My address is " + address;
         SmsManager.getDefault().sendTextMessage(number, null, message, null, null);
 
         // TODO: listen for reply or something.
