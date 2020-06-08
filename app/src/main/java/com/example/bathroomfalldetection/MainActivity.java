@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
 
     CountDownTimer contactTimer;
     private boolean contactRunning;
-    final int CONTACT_COUNTDOWN = 1 * 6 * 1000; // in ms
+    final int CONTACT_COUNTDOWN = 1 * 60 * 1000; // in ms
     final int PERIODIC_ALERT = 1 * 1000; // in ms
 
     CountDownTimer emergencyTimer;
@@ -187,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
                     public void onTick(long millisUntilFinished) {
 //                        Log.d("emergencyTimer", "Time left: " + millisUntilFinished);
                         // Play a sound
-//                        alertSound();
+                        alertSound();
                         // TODO: Update the contact countdown timer text.
                     }
 
