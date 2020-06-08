@@ -4,22 +4,24 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
-import android.media.AudioRecord;
 import android.media.AudioTrack;
-import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
-import android.provider.MediaStore;
+import android.provider.Telephony;
 import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -32,16 +34,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Random;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * App for detecting bathroom falls and contacting people if alert isn't muted.
@@ -59,20 +52,20 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
  * Stops detecting when user quits the app.
  */
 public class MainActivity extends AppCompatActivity {
-    final Runnable detector = new Runnable() {
-        public void run() {
-            detection();
-        }
-    };
-    final int READ_SIZE = 4000;
-    ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-    ScheduledFuture<?> detectionHandle = null;
-    AudioRecord recorder = null;
+    //    final Runnable detector = new Runnable() {
+//        public void run() {
+//            detection();
+//        }
+//    };
+//    final int READ_SIZE = 4000;
+//    ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+//    ScheduledFuture<?> detectionHandle = null;
+//    AudioRecord recorder = null;
     AudioTrack audioTrack = null;
-    LinkedList<Double> window = new LinkedList<>();
-    PriorityQueue<Double> sortedWindow = new PriorityQueue<>();
-    PriorityQueue<Double> reversedSortedWindow = new PriorityQueue<>();
-    List<Double> median_list = new ArrayList<>();
+//    LinkedList<Double> window = new LinkedList<>();
+//    PriorityQueue<Double> sortedWindow = new PriorityQueue<>();
+//    PriorityQueue<Double> reversedSortedWindow = new PriorityQueue<>();
+//    List<Double> median_list = new ArrayList<>();
 
     private SensorManager sensorManager;
     private Sensor accelSensor;
@@ -81,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
 
     CountDownTimer contactTimer;
     private boolean contactRunning;
-    final int CONTACT_COUNTDOWN = 1 * 60 * 1000; // in ms
+    final int CONTACT_COUNTDOWN = 1 * 6 * 1000; // in ms
     final int PERIODIC_ALERT = 1 * 1000; // in ms
 
     CountDownTimer emergencyTimer;
@@ -129,21 +122,21 @@ public class MainActivity extends AppCompatActivity {
         accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
         // Gets recording parameters
-        int minSize = AudioRecord.getMinBufferSize(
-                SAMPLE_RATE,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT
-        );
-        Log.d("Recording", "buffer size is " + minSize);
-        recorder = new AudioRecord.Builder()
-                .setAudioSource(MediaRecorder.AudioSource.MIC)
-                .setAudioFormat(new AudioFormat.Builder()
-                        .setSampleRate(SAMPLE_RATE)
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
-                        .build())
-                .setBufferSizeInBytes(4 * minSize)
-                .build();
+//        int minSize = AudioRecord.getMinBufferSize(
+//                SAMPLE_RATE,
+//                AudioFormat.CHANNEL_IN_MONO,
+//                AudioFormat.ENCODING_PCM_16BIT
+//        );
+//        Log.d("Recording", "buffer size is " + minSize);
+//        recorder = new AudioRecord.Builder()
+//                .setAudioSource(MediaRecorder.AudioSource.MIC)
+//                .setAudioFormat(new AudioFormat.Builder()
+//                        .setSampleRate(SAMPLE_RATE)
+//                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+//                        .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+//                        .build())
+//                .setBufferSizeInBytes(4 * minSize)
+//                .build();
 
         //gets audiotrack
         audioTrack = new AudioTrack.Builder()
@@ -171,8 +164,7 @@ public class MainActivity extends AppCompatActivity {
         contactTimer = new CountDownTimer(CONTACT_COUNTDOWN, PERIODIC_ALERT) {
             @Override
             public void onTick(long millisUntilFinished) {
-                // Play a sound
-                Log.d("contactTimer", "Time left: " + millisUntilFinished);
+//                Log.d("contactTimer", "Time left: " + millisUntilFinished);
                 // Play a sound
                 alertSound();
                 // TODO: Update the contact countdown timer text.
@@ -193,164 +185,164 @@ public class MainActivity extends AppCompatActivity {
                 emergencyTimer = new CountDownTimer(EMERGENCY_COUNTDOWN, PERIODIC_ALERT) {
                     @Override
                     public void onTick(long millisUntilFinished) {
-                        Log.d("emergencyTimer", "Time left: " + millisUntilFinished);
+//                        Log.d("emergencyTimer", "Time left: " + millisUntilFinished);
                         // Play a sound
-                        alertSound();
+//                        alertSound();
                         // TODO: Update the contact countdown timer text.
                     }
 
                     @Override
                     public void onFinish() {
                         // TODO: Text police or something with address
+                        textEmergencyServices();
                         // TODO: Start listener for response?
                         // If that doesn't work, maybe have it play an audio file saying that the person fell and may be unconscious
                         // TODO: Update status
-
                     }
                 }.start();
             }
         };
 
 
-        scheduleDetection();
+//        scheduleDetection();
     }
 
-    public void scheduleDetection() {
-        detectionHandle = scheduler.schedule(detector, -1, MILLISECONDS);
-    }
+//    public void scheduleDetection() {
+//        detectionHandle = scheduler.schedule(detector, -1, MILLISECONDS);
+//    }
 
-    public void detection() {
-//        int bufferSize = AudioRecord.getMinBufferSize(44100, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
-        recorder.startRecording();
-        while (true) {
-            final short[] buffer = new short[READ_SIZE];
-            try {
-
-                // Read until buffer is full
-                int offset = 0;
-                int length = buffer.length;
-                int read;
-                while (length > 0) {
-                    read = recorder.read(buffer, offset, length);
-                    length -= read;
-                    offset += read;
-                }
-//                recorder.stop();
-            } catch (Exception e) {
-                Log.d("In thread", e.toString());
-//                recorder.stop();
-            }
-
-            // Calculates power over recording
-            double e = 0;
-            Random r = new Random();
-            for (int i = 0; i < READ_SIZE; i++) {
-//                buffer[i] += 2000;
-//                double signal = buffer[i] + r.nextGaussian() * GAUSSIAN_SCALE;
-                double signal = buffer[i];
-                e += signal * signal;
-            }
-            e /= READ_SIZE;
-//            e = Math.sqrt(e);
-            Log.d("energy_value", Double.toString(e));
-
-            // Add power to current window and update min/max
-            window.add(e);
-            sortedWindow.add(e);
-            reversedSortedWindow.add(-e);
-            int index = Collections.binarySearch(median_list, e);
-            if (index < 0) {
-                index = -index - 1;
-            }
-            median_list.add(index, e);
-
-            // Remove from window if larger than L
-            if (window.size() > L) {
-                double temp = window.remove();
-                sortedWindow.remove(temp);
-                reversedSortedWindow.remove(-temp);
-                index = Collections.binarySearch(median_list, temp);
-                if (index < 0) {
-                    Log.d("WTF", "binary search on doubles went really wrong, want " + temp + " got " + median_list.get(index));
-                    index = -index - 1;
-                }
-                median_list.remove(index);
-            }
-
-            // Calculates average and variance and cut-offs.
-            if (window.size() == L) {
-                // Median method
-                // TODO: Use a different L for medians or something so that we can get median detection and find pulses.
-                double median = median_list.size() % 2 == 0
-                        ? (median_list.get(median_list.size() / 2) + median_list.get(median_list.size() / 2 + 1)) / 2
-                        : median_list.get((median_list.size() / 2));
-
-                double energyDelayed = window.get(window.size() - 1 - DELAY);
-                double cmfk = Math.abs(median - energyDelayed) > CMF_TH
-                        ? median
-                        : energyDelayed;
-
-                double pk = energyDelayed - cmfk;
-
-                Log.d("condition_median_filter", "median=" + median + " energyDelayed=" + energyDelayed + " cmfk=" + cmfk + " pk=" + pk);
-
-                if (pk > 0.1) {
-                    Log.d("alert_above_thresh", pk + " is above threshold");
-                }
-
-
-                // Variance method
-                // Calculates normalized energy
-//                double minimum = sortedWindow.peek();
-//                double maximum = -reversedSortedWindow.peek();
-//                double[] normalizedEnergy = new double[L];
-//                int i = 0;
-//                double diff = maximum - minimum;
-//                double sum = 0;
-//                for (Double eWin : window) {
-//                    normalizedEnergy[i] = (eWin - minimum) / diff;
-//                    if (i != window.size() - 1)
-//                        sum += normalizedEnergy[i];
-//                    i += 1;
-//                }
-//                double average = sum / (L - 1);
+//    public void detection() {
+////        int bufferSize = AudioRecord.getMinBufferSize(44100, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT);
+//        recorder.startRecording();
+//        while (true) {
+//            final short[] buffer = new short[READ_SIZE];
+//            try {
 //
-////                Log.d("maximum", Double.toString(maximum));
+//                // Read until buffer is full
+//                int offset = 0;
+//                int length = buffer.length;
+//                int read;
+//                while (length > 0) {
+//                    read = recorder.read(buffer, offset, length);
+//                    length -= read;
+//                    offset += read;
+//                }
+////                recorder.stop();
+//            } catch (Exception e) {
+//                Log.d("In thread", e.toString());
+////                recorder.stop();
+//            }
 //
-//                // variance calculations
-//                double variance = 0.0;
-//                double temp;
-//                for (i = 0; i < L - 1; i++) {
-//                    temp = normalizedEnergy[i] - average;
-//                    variance += temp * temp;
+//            // Calculates power over recording
+//            double e = 0;
+//            Random r = new Random();
+//            for (int i = 0; i < READ_SIZE; i++) {
+////                buffer[i] += 2000;
+////                double signal = buffer[i] + r.nextGaussian() * GAUSSIAN_SCALE;
+//                double signal = buffer[i];
+//                e += signal * signal;
+//            }
+//            e /= READ_SIZE;
+////            e = Math.sqrt(e);
+//            Log.d("energy_value", Double.toString(e));
+//
+//            // Add power to current window and update min/max
+//            window.add(e);
+//            sortedWindow.add(e);
+//            reversedSortedWindow.add(-e);
+//            int index = Collections.binarySearch(median_list, e);
+//            if (index < 0) {
+//                index = -index - 1;
+//            }
+//            median_list.add(index, e);
+//
+//            // Remove from window if larger than L
+//            if (window.size() > L) {
+//                double temp = window.remove();
+//                sortedWindow.remove(temp);
+//                reversedSortedWindow.remove(-temp);
+//                index = Collections.binarySearch(median_list, temp);
+//                if (index < 0) {
+//                    Log.d("WTF", "binary search on doubles went really wrong, want " + temp + " got " + median_list.get(index));
+//                    index = -index - 1;
 //                }
-//                variance /= (L - 1);
-//                Log.d("average_normalized_variance", average + " " + variance);
-//                if (variance < THRESHOLD) {
-////                    changeText("alert");
-//                    Log.d("alert_below_thresh", variance + " is below threshold");
-//                } else {
-////                    changeText("no_alert");
+//                median_list.remove(index);
+//            }
+//
+//            // Calculates average and variance and cut-offs.
+//            if (window.size() == L) {
+//                // Median method
+//                // TODO: Use a different L for medians or something so that we can get median detection and find pulses.
+//                double median = median_list.size() % 2 == 0
+//                        ? (median_list.get(median_list.size() / 2) + median_list.get(median_list.size() / 2 + 1)) / 2
+//                        : median_list.get((median_list.size() / 2));
+//
+//                double energyDelayed = window.get(window.size() - 1 - DELAY);
+//                double cmfk = Math.abs(median - energyDelayed) > CMF_TH
+//                        ? median
+//                        : energyDelayed;
+//
+//                double pk = energyDelayed - cmfk;
+//
+//                Log.d("condition_median_filter", "median=" + median + " energyDelayed=" + energyDelayed + " cmfk=" + cmfk + " pk=" + pk);
+//
+//                if (pk > 0.1) {
+//                    Log.d("alert_above_thresh", pk + " is above threshold");
 //                }
-
-                // TODO: Fall detected
-                // TODO: Accelerometer
-                boolean fallDetected = false;
-
-                // Starts timer to contact emergency contact
-                // Changes text of the fall detection status
-                // Starts contact timers after
-                if (fallDetected && !(contactRunning | emergencyRunning)) {
-                    Log.d("What", "Does it even get in here");
-                    Log.d("Does it set", "set");
-                    contactRunning = true;
-                    Log.d("Nani, fam", "nani");
-                    contactTimer.start();
-                    Log.d("What the fuck", "Timer");
-                }
-            }
-        }
-    }
+//
+//
+//                // Variance method
+//                // Calculates normalized energy
+////                double minimum = sortedWindow.peek();
+////                double maximum = -reversedSortedWindow.peek();
+////                double[] normalizedEnergy = new double[L];
+////                int i = 0;
+////                double diff = maximum - minimum;
+////                double sum = 0;
+////                for (Double eWin : window) {
+////                    normalizedEnergy[i] = (eWin - minimum) / diff;
+////                    if (i != window.size() - 1)
+////                        sum += normalizedEnergy[i];
+////                    i += 1;
+////                }
+////                double average = sum / (L - 1);
+////
+//////                Log.d("maximum", Double.toString(maximum));
+////
+////                // variance calculations
+////                double variance = 0.0;
+////                double temp;
+////                for (i = 0; i < L - 1; i++) {
+////                    temp = normalizedEnergy[i] - average;
+////                    variance += temp * temp;
+////                }
+////                variance /= (L - 1);
+////                Log.d("average_normalized_variance", average + " " + variance);
+////                if (variance < THRESHOLD) {
+//////                    changeText("alert");
+////                    Log.d("alert_below_thresh", variance + " is below threshold");
+////                } else {
+//////                    changeText("no_alert");
+////                }
+//
+//                // TODO: Fall detected
+//                // TODO: Accelerometer
+//                boolean fallDetected = false;
+//
+//                // Starts timer to contact emergency contact
+//                // Changes text of the fall detection status
+//                // Starts contact timers after
+//                if (fallDetected && !(contactRunning | emergencyRunning)) {
+//                    Log.d("What", "Does it even get in here");
+//                    Log.d("Does it set", "set");
+//                    contactRunning = true;
+//                    Log.d("Nani, fam", "nani");
+//                    contactTimer.start();
+//                    Log.d("What the fuck", "Timer");
+//                }
+//            }
+//        }
+//    }
 
     public void onResume() {
         super.onResume();
@@ -370,7 +362,7 @@ public class MainActivity extends AppCompatActivity {
                 length += event.values[i] * event.values[i];
             }
             length = Math.sqrt(length);
-            Log.d("Accelerometer", Arrays.toString(event.values) + " length: " + length);
+//            Log.d("Accelerometer", Arrays.toString(event.values) + " length: " + length);
             // TODO: Do something
             if (length < ACCEL_THRESHOLD) {
                 boolean fallDetected = true;
@@ -378,7 +370,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("Accelerometer", "Fall detected!!!!!");
                 // If falling motion is consecutive
                 // TODO: Make it adaptive
-                if (fallCount > 3 && !(contactRunning | emergencyRunning)) {
+                if (fallCount > 0 && !(contactRunning | emergencyRunning)) {
                     contactRunning = true;
                     contactTimer.start();
                 }
@@ -416,11 +408,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // disable emergency service timer
+        cancelEmergencyTimer();
+        // TODO: Maybe send a text like "Wait, nvm" to the saved contact
+    }
+
+    public void cancelEmergencyTimer() {
         if (emergencyTimer != null && emergencyRunning) {
             emergencyRunning = false;
             emergencyTimer.cancel();
-            // TODO: Maybe send a text like "Wait, nvm" to the saved contact
-
         }
     }
 
@@ -466,11 +461,50 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         String message = "Falling detection app detected falling and the alert hasn't been cancelled in " +
-                + CONTACT_COUNTDOWN + " seconds.\n My address is " + address;
+                +CONTACT_COUNTDOWN + " seconds.\n My address is " + address + "\n" +
+                "send \"cancel\" to stop the app from texting 911";
         SmsManager.getDefault().sendTextMessage(number, null, message, null, null);
 
         // TODO: listen for reply or something.
+        listenContactReply();
         Log.d("texting", "sent text to saved contact number");
+    }
+
+    public void listenContactReply() {
+        Log.d("texting", "listening for reply");
+        SmsListener listener = new SmsListener(number);
+        IntentFilter filter = new IntentFilter("android.provider.Telephony.SMS_RECEIVED");
+        filter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
+        getApplicationContext().registerReceiver(listener, filter);
+    }
+
+    class SmsListener extends BroadcastReceiver {
+
+        private String numberListening;
+
+        public SmsListener(String number) {
+            this.numberListening = number;
+            Log.d("texting", "starting to monitor messages from " + number);
+        }
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (Telephony.Sms.Intents.SMS_RECEIVED_ACTION.equals(intent.getAction())) {
+                for (SmsMessage smsMessage : Telephony.Sms.Intents.getMessagesFromIntent(intent)) {
+                    String senderNum = smsMessage.getDisplayOriginatingAddress();
+//                    if (senderNum.equals(numberListening)) {
+                        String messageBody = smsMessage.getMessageBody();
+                        Log.d("texting", "got message from number " + senderNum + " with message: "
+                                + messageBody);
+                        if (messageBody.equals("cancel")) {
+                            cancelEmergencyTimer();
+                            String message = "ok, not going to text 911";
+                            SmsManager.getDefault().sendTextMessage(number, null, message, null, null);
+                        }
+//                    }
+                }
+            }
+        }
     }
 
     /**
@@ -499,7 +533,7 @@ public class MainActivity extends AppCompatActivity {
     public void alertSound() {
         audioTrack.stop();
         if (audioTrack != null) {
-            Log.d("alertSound", "We out here");
+//            Log.d("alertSound", "We out here");
 //            audioTrack.reloadStaticData();
             audioTrack.play();
         }
