@@ -492,7 +492,7 @@ public class MainActivity extends AppCompatActivity {
             if (Telephony.Sms.Intents.SMS_RECEIVED_ACTION.equals(intent.getAction())) {
                 for (SmsMessage smsMessage : Telephony.Sms.Intents.getMessagesFromIntent(intent)) {
                     String senderNum = smsMessage.getDisplayOriginatingAddress();
-//                    if (senderNum.equals(numberListening)) {
+                    if (senderNum.equals("+1" + numberListening)) {
                         String messageBody = smsMessage.getMessageBody();
                         Log.d("texting", "got message from number " + senderNum + " with message: "
                                 + messageBody);
@@ -501,18 +501,19 @@ public class MainActivity extends AppCompatActivity {
                             String message = "ok, not going to text 911";
                             SmsManager.getDefault().sendTextMessage(number, null, message, null, null);
                         }
-//                    }
+                    }
                 }
             }
         }
     }
 
     /**
-     * TODO: Text emergency services
+     * Text emergency services
      */
     public void textEmergencyServices() {
         Log.d("texting", "Sent text to emergency service");
-        // TODO: Has to listen for bounce-back or something. Also send address
+        // not going to implement because we don't want to actually text 911
+        // Has to listen for bounce-back or something. Also send address
     }
 
     /**
