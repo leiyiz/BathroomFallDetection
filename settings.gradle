@@ -1,2 +1,4 @@
 rootProject.name='BathroomFallDetection'
 include ':app'
+include ':falldetection'
+include ':fallreceiver'

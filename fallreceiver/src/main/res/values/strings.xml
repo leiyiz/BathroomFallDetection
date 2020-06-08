@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">BathroomFallDetection</string>
+    <string name="btn_mute_text">Mute</string>
+    <string name="status_text">"Status: "</string>
+    <string name="status_fall_detected">Fall Detected</string>
+    <string name="status_no_fall_detected">No Fall Detected</string>
+    <string name="save_text">Save</string>
+    <string name="contact_autofill_hint">(___)-___-____</string>
+
+    <string name="discover">Discoverable</string>
+    <string name="pair_device">Pair Device</string>
+    <string name="ble_not_supported">BLE not supported</string>
+    <string name="not_connected">Not Connected</string>
+    <string name="bt_not_enabled_leaving">BT not enabled</string>
+    <string name="select_device">Select device</string>
+    <string name="none_found">Could not find any devices</string>
+    <string name="scanning">Scanning...</string>
+    <string name="none_paired">Not paired</string>
+    <string name="title_paired_devices">Paired devices</string>
+    <string name="button_scan">Scan</string>
+    <string name="title_other_devices">Other Devices</string>
+
+    <string name="muted_by_receiver">Muted by Receiver</string>
+    <string name="muted_by_user">Muted by User</string>
+    <string name="muted_by_contact">Muted by Contact</string>
+    <string name="none">None</string>
+
+</resources>

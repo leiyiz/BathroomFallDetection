@@ -6,12 +6,37 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <Button
+        android:id="@+id/pair_device"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="36dp"
+        android:onClick="onClickPairOptions"
+        android:text="@string/pair_device"
+        android:textSize="10sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.099"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/make_discoverable"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:onClick="onClickEnableDiscovery"
+        android:text="@string/discover"
+        android:textSize="10sp"
+        app:layout_constraintBottom_toBottomOf="@+id/pair_device"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.9"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <TextView
         android:id="@+id/fall_detection_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/status_no_fall_detected"
-        android:textSize="24sp"
+        android:textSize="14sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintHorizontal_bias="0.727"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -23,7 +48,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/status_text"
-        android:textSize="24sp"
+        android:textSize="14sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/fall_detection_status"
         app:layout_constraintTop_toTopOf="parent" />
@@ -44,12 +69,13 @@
         android:id="@+id/contact_number_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="36dp"
-        android:layout_marginTop="148dp"
+        android:layout_marginStart="40dp"
+        android:layout_marginTop="152dp"
         android:autofillHints="@string/contact_autofill_hint"
         android:ems="10"
         android:hint="Contact Number"
         android:inputType="phone"
+        android:textSize="10sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -61,30 +87,11 @@
         android:layout_marginEnd="40dp"
         android:onClick="saveContactHandler"
         android:text="@string/save_text"
+        android:textSize="10sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.676"
         app:layout_constraintStart_toEndOf="@+id/contact_number_text"
         app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/static_contact_time"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="48dp"
-        android:text="TextView"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.196"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/fall_detection_status" />
-
-    <TextView
-        android:id="@+id/countdown_timer"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TextView"
-        app:layout_constraintBottom_toBottomOf="@+id/static_contact_time"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/static_contact_time" />
 
     <EditText
         android:id="@+id/address_text"
@@ -95,7 +102,19 @@
         android:ems="10"
         android:hint="address"
         android:inputType="textPostalAddress"
+        android:textSize="10sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/contact_number_text" />
+
+    <TextView
+        android:id="@+id/pair_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/none"
+        app:layout_constraintBottom_toTopOf="@+id/btn_mute"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/fall_detection_status"
+        app:layout_constraintVertical_bias="0.355" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
