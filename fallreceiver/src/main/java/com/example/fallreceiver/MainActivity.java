@@ -82,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
 
     CountDownTimer contactTimer;
     private boolean contactRunning;
-    final int CONTACT_COUNTDOWN = 1 * 60 * 1000; // in ms
+    final int CONTACT_COUNTDOWN = 1 * 5 * 1000; // in ms
     final int PERIODIC_ALERT = 1 * 1000; // in ms
 
     CountDownTimer emergencyTimer;
@@ -98,6 +98,7 @@ public class MainActivity extends AppCompatActivity {
     final String CONTACT_FILENAME = "EmContact_number_and_address.txt";
     String number = null;
     String address = null;
+    SmsListener listener;
 
 
     @Override
@@ -135,8 +136,9 @@ public class MainActivity extends AppCompatActivity {
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
 
-        // Gets recording permissions
-//        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS}, 0);
+        // Gets SMS permissions
+        requestPermissions(new String[]{Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS}, 0);
+
 
         // Gets recording parameters
 //        int minSize = AudioRecord.getMinBufferSize(
@@ -530,21 +532,33 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         String message = "Falling detection app detected falling and the alert hasn't been cancelled in " +
-                +CONTACT_COUNTDOWN + " seconds.\n My address is " + address + "\n" +
-                "send \"cancel\" to stop the app from texting 911";
+                + CONTACT_COUNTDOWN / 1000 + " seconds.";
         SmsManager.getDefault().sendTextMessage(number, null, message, null, null);
+        String message2 = "My address is " + address + "\n send \"cancel\" to stop the app from texting 911";
+        SmsManager.getDefault().sendTextMessage(number, null, message2, null, null);
+        setStatus("Sent text to contact");
+
 
         // TODO: listen for reply or something.
         listenContactReply();
-        Log.d("texting", "sent text to saved contact number");
+        Log.d("texting", "sent " + message + " to saved contact number");
+        Log.d("texting", "sent " + message2 + " to saved contact number");
     }
 
     public void listenContactReply() {
-        Log.d("texting", "listening for reply");
-        SmsListener listener = new SmsListener(number);
+        if (listener != null) {
+//            getApplicationContext().unregisterReceiver(listener);
+            return;
+        }
+        if (number == null) {
+            Log.d("listenContactReply", "Returning because number is empty");
+            return;
+        }
+        listener = new SmsListener(number);
         IntentFilter filter = new IntentFilter("android.provider.Telephony.SMS_RECEIVED");
         filter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
         getApplicationContext().registerReceiver(listener, filter);
+        Log.d("texting", "listening for reply");
     }
 
     class SmsListener extends BroadcastReceiver {

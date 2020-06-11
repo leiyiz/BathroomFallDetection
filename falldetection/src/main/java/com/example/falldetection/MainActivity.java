@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
     private SensorManager sensorManager;
     private Sensor accelSensor;
     private double ACCEL_THRESHOLD = 3.0; // TODO: Choose accelerometer threshold
+    private int FALL_COUNT_THRESH = 1;
     private int fallCount = 0;
     private boolean alertSent;
 
@@ -346,7 +347,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("Accelerometer", "Fall detected!!!!!");
                 // If falling motion is consecutive
                 // TODO: Make it adaptive
-                if (fallCount > 0 && !alertSent) {
+                if (fallCount > FALL_COUNT_THRESH && !alertSent) {
                     // TODO: Send message to bluetooth receiver
                     Log.d("Accelerometer", "Sending message to receiver");
                     sendMessage("alert");
